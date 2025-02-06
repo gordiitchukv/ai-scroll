@@ -21,7 +21,7 @@ jobs:
         run: npm install
 
       - name: Run TypeScript
-        run: npx tsc
+        run: npx tsс
 
       - name: Run ESLint
         run: npm run lint

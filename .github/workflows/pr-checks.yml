@@ -14,14 +14,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run TypeScript
-        run: npx tsc
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
 
       - name: Install dependencies
         run: npm install
+
+      - name: Run TypeScript
+        run: npx tsc
 
       - name: Run ESLint
         run: npm run lint

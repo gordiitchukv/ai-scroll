@@ -7,7 +7,7 @@ export const Camera = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    if (!isEnabled || !videoRef.current) return;
 
     let stream: MediaStream | null = null;
 
@@ -26,17 +26,13 @@ export const Camera = () => {
       }
     };
 
-    const stopStream = () => {
-      stream?.getTracks().forEach((track) => track.stop());
+    startStream();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
     };
-
-    if (isEnabled) {
-      startStream();
-    } else {
-      stopStream();
-    }
-
-    return () => stopStream();
   }, [isEnabled]);
 
   return (

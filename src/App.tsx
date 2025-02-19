@@ -2,6 +2,7 @@ import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
 import { InfiniteScroll } from "./components/InfiniteScroll";
+import { Camera } from "./components/Camera";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         </a>
       </div>
       <h1>Vite + React</h1>
+      <Camera />
       <InfiniteScroll />
     </>
   );

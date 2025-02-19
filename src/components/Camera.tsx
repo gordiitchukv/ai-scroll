@@ -7,23 +7,30 @@ export const Camera = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (!isEnabled) {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      return;
-    }
-
     if (!videoRef.current) return;
 
     let stream: MediaStream | null = null;
 
+    if (!isEnabled) {
+      videoRef.current.srcObject = null;
+      return;
+    }
+
     const startStream = async () => {
       try {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
-        videoRef.current!.srcObject = stream;
+
+        if (isEnabled && videoRef.current) {
+          videoRef.current.srcObject = stream;
+        } else {
+          stream.getTracks().forEach((track) => track.stop());
+        }
       } catch (err) {
         if (err instanceof Error) {
           setError(err.name);

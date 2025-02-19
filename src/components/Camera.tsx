@@ -17,12 +17,19 @@ export const Camera = () => {
     if (!videoRef.current) return;
 
     let stream: MediaStream | null = null;
+    let isTerminated = false;
 
     const startStream = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
+
+        if (isTerminated) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
         videoRef.current!.srcObject = stream;
       } catch (err) {
         if (err instanceof Error) {
@@ -36,6 +43,7 @@ export const Camera = () => {
     startStream();
 
     return () => {
+      isTerminated = true;
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }

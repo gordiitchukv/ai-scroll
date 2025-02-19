@@ -7,7 +7,14 @@ export const Camera = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (!isEnabled || !videoRef.current) return;
+    if (!isEnabled) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      return;
+    }
+
+    if (!videoRef.current) return;
 
     let stream: MediaStream | null = null;
 

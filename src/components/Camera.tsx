@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState } from "react";
+import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
+import "@mediapipe/hands";
 import "./Camera.css";
 
 export const Camera = () => {
@@ -18,25 +20,41 @@ export const Camera = () => {
 
     let stream: MediaStream | null = null;
     let isTerminated = false;
+    let intervalId: NodeJS.Timeout | null = null;
 
     const startStream = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-        if (isTerminated) {
+        if (isTerminated || !videoRef.current) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
-        videoRef.current!.srcObject = stream;
+        videoRef.current.srcObject = stream;
+
+        const model = handPoseDetection.SupportedModels.MediaPipeHands;
+        const detectorConfig: handPoseDetection.MediaPipeHandsMediaPipeModelConfig =
+          {
+            runtime: "mediapipe",
+            solutionPath:
+              "https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/",
+            modelType: "full",
+          };
+
+        const detector = await handPoseDetection.createDetector(
+          model,
+          detectorConfig
+        );
+        console.log("Hand detector initialized");
+
+        intervalId = setInterval(async () => {
+          if (!videoRef.current || videoRef.current.readyState < 2) return;
+          const hands = await detector.estimateHands(videoRef.current);
+          console.log("Detected hands:", hands);
+        }, 1000);
       } catch (err) {
-        if (err instanceof Error) {
-          setError(err.name);
-        } else {
-          setError("An unknown error occurred");
-        }
+        setError(err instanceof Error ? err.message : "Unknown error occurred");
       }
     };
 
@@ -46,6 +64,10 @@ export const Camera = () => {
       isTerminated = true;
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
       }
     };
   }, [isEnabled]);

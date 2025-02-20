@@ -84,11 +84,10 @@ export const Camera = () => {
             );
 
             if (wrist && thumbTip) {
-              if (thumbTip.y < wrist.y) {
-                window.scrollBy({ top: -50, behavior: "smooth" });
-              } else if (thumbTip.y > wrist.y) {
-                window.scrollBy({ top: 50, behavior: "smooth" });
-              }
+              window.scrollBy({
+                top: thumbTip.y < wrist.y ? -50 : 50,
+                behavior: "smooth",
+              });
             }
           }
         }, 500);

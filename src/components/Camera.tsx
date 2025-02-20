@@ -73,8 +73,25 @@ export const Camera = () => {
         intervalId = setInterval(async () => {
           if (!videoRef.current || videoRef.current.readyState < 2) return;
           const hands = await detector!.estimateHands(videoRef.current);
-          console.log("Detected hands:", hands);
-        }, 1000);
+
+          if (hands.length > 0) {
+            const hand = hands[0];
+            const wrist = hand.keypoints.find(
+              (point) => point.name === "wrist"
+            );
+            const thumbTip = hand.keypoints.find(
+              (point) => point.name === "thumb_tip"
+            );
+
+            if (wrist && thumbTip) {
+              if (thumbTip.y < wrist.y) {
+                window.scrollBy({ top: -50, behavior: "smooth" });
+              } else if (thumbTip.y > wrist.y) {
+                window.scrollBy({ top: 50, behavior: "smooth" });
+              }
+            }
+          }
+        }, 500);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error occurred");
         cleanup();

@@ -62,6 +62,12 @@ export const Camera = () => {
           model,
           detectorConfig
         );
+
+        if (isTerminated) {
+          cleanup();
+          return;
+        }
+
         console.log("Hand detector initialized");
 
         intervalId = setInterval(async () => {

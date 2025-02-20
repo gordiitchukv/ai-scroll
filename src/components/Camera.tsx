@@ -19,15 +19,31 @@ export const Camera = () => {
     if (!videoRef.current) return;
 
     let stream: MediaStream | null = null;
+    let detector: handPoseDetection.HandDetector | null = null;
     let isTerminated = false;
     let intervalId: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      isTerminated = true;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      if (detector) {
+        detector.dispose();
+        detector = null;
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
 
     const startStream = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
         if (isTerminated || !videoRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
+          cleanup();
           return;
         }
 
@@ -42,7 +58,7 @@ export const Camera = () => {
             modelType: "full",
           };
 
-        const detector = await handPoseDetection.createDetector(
+        detector = await handPoseDetection.createDetector(
           model,
           detectorConfig
         );
@@ -50,26 +66,18 @@ export const Camera = () => {
 
         intervalId = setInterval(async () => {
           if (!videoRef.current || videoRef.current.readyState < 2) return;
-          const hands = await detector.estimateHands(videoRef.current);
+          const hands = await detector!.estimateHands(videoRef.current);
           console.log("Detected hands:", hands);
         }, 1000);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error occurred");
+        cleanup();
       }
     };
 
     startStream();
 
-    return () => {
-      isTerminated = true;
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
+    return cleanup;
   }, [isEnabled]);
 
   return (

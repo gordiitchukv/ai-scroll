@@ -9,14 +9,8 @@ export const Camera = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (!isEnabled) {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      return;
-    }
-
-    if (!videoRef.current) return;
+    const videoElement = videoRef.current;
+    if (!videoElement || !isEnabled) return;
 
     let stream: MediaStream | null = null;
     let detector: handPoseDetection.HandDetector | null = null;
@@ -42,12 +36,12 @@ export const Camera = () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-        if (isTerminated || !videoRef.current) {
+        if (isTerminated) {
           cleanup();
           return;
         }
 
-        videoRef.current.srcObject = stream;
+        videoElement.srcObject = stream;
 
         const model = handPoseDetection.SupportedModels.MediaPipeHands;
         const detectorConfig: handPoseDetection.MediaPipeHandsMediaPipeModelConfig =
@@ -71,8 +65,8 @@ export const Camera = () => {
         console.log("Hand detector initialized");
 
         intervalId = setInterval(async () => {
-          if (!videoRef.current || videoRef.current.readyState < 2) return;
-          const hands = await detector!.estimateHands(videoRef.current);
+          if (videoElement.readyState < 2) return;
+          const hands = await detector!.estimateHands(videoElement);
 
           if (hands.length > 0) {
             const hand = hands[0];
@@ -85,7 +79,7 @@ export const Camera = () => {
 
             if (wrist && thumbTip) {
               window.scrollBy({
-                top: thumbTip.y < wrist.y ? -50 : 50,
+                top: (thumbTip.y < wrist.y ? -1 : 1) * 200,
                 behavior: "smooth",
               });
             }
@@ -118,6 +112,7 @@ export const Camera = () => {
         <button
           onClick={() => {
             setError(null);
+            if (isEnabled && videoRef.current) videoRef.current.srcObject = null;
             setIsEnabled(!isEnabled);
           }}
         >

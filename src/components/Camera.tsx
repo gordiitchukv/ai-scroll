@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState } from "react";
+import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
+import "@mediapipe/hands";
 import "./Camera.css";
 
 export const Camera = () => {
@@ -7,47 +9,91 @@ export const Camera = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (!isEnabled) {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      return;
-    }
-
-    if (!videoRef.current) return;
+    const videoElement = videoRef.current;
+    if (!videoElement || !isEnabled) return;
 
     let stream: MediaStream | null = null;
+    let detector: handPoseDetection.HandDetector | null = null;
     let isTerminated = false;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      isTerminated = true;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      if (detector) {
+        detector.dispose();
+        detector = null;
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
 
     const startStream = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
         if (isTerminated) {
-          stream.getTracks().forEach((track) => track.stop());
+          cleanup();
           return;
         }
 
-        videoRef.current!.srcObject = stream;
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.name);
-        } else {
-          setError("An unknown error occurred");
+        videoElement.srcObject = stream;
+
+        const model = handPoseDetection.SupportedModels.MediaPipeHands;
+        const detectorConfig: handPoseDetection.MediaPipeHandsMediaPipeModelConfig =
+          {
+            runtime: "mediapipe",
+            solutionPath:
+              "https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/",
+            modelType: "full",
+          };
+
+        detector = await handPoseDetection.createDetector(
+          model,
+          detectorConfig
+        );
+
+        if (isTerminated) {
+          cleanup();
+          return;
         }
+
+        console.log("Hand detector initialized");
+
+        intervalId = setInterval(async () => {
+          if (videoElement.readyState < 2) return;
+          const hands = await detector!.estimateHands(videoElement);
+
+          if (hands.length > 0) {
+            const hand = hands[0];
+            const wrist = hand.keypoints.find(
+              (point) => point.name === "wrist"
+            );
+            const thumbTip = hand.keypoints.find(
+              (point) => point.name === "thumb_tip"
+            );
+
+            if (wrist && thumbTip) {
+              window.scrollBy({
+                top: (thumbTip.y < wrist.y ? -1 : 1) * 200,
+                behavior: "smooth",
+              });
+            }
+          }
+        }, 500);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error occurred");
+        cleanup();
       }
     };
 
     startStream();
 
-    return () => {
-      isTerminated = true;
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
+    return cleanup;
   }, [isEnabled]);
 
   return (
@@ -66,6 +112,7 @@ export const Camera = () => {
         <button
           onClick={() => {
             setError(null);
+            if (isEnabled && videoRef.current) videoRef.current.srcObject = null;
             setIsEnabled(!isEnabled);
           }}
         >
